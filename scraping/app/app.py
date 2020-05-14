@@ -1,0 +1,174 @@
+import requests
+import time
+import csv
+from bs4 import BeautifulSoup
+
+class ShopScraping:
+  def __init__(self,domain,headers):
+    self.domain = domain
+    self.headers = headers
+
+  def item_link(self,DOMAIN,itemLinks):
+    for itemLink in itemLinks:
+      URL = str(DOMAIN+itemLink.get("href"))
+    return URL
+  
+  def item_details(self,itemDetailLinks):
+    time.sleep(1)
+    itemName = []
+    itemCode = []
+    itemPrice = []
+    itemBrand = []
+    itemInfomation =[]
+    itemFeature =[]
+    
+    for code ,itemDetailLink in itemDetailLinks.items():
+      itemCode.append(code)
+      response = requests.get(itemDetailLink, timeout=5, headers=headers)
+      response.encoding = response.apparent_encoding 
+      soup = BeautifulSoup(response.text, 'html.parser')
+
+      itemContents = soup.find_all(class_='p-itemscope')
+      #商品名を取得
+      
+      #itemName.append(self.item(itemContents,'p-desc__ttl'))
+      itemBrand.append(self.item(itemContents,'p-brand__name'))
+      itemInfomation.append(self.item_infomation(itemContents,'p-desc__toggle__main',code))
+     # itemFeature.append(self.item_feature(itemContents,'p-desc__caption'))
+      #特徴は別メソッドで取得
+    print(itemInfomation)
+
+
+
+  
+  
+  def item(self,contents,target):
+    for content in contents:
+      itemName = content.find(class_=target)
+      if itemName is None:
+        return 'no-brand'
+    return itemName.string
+  
+  def item_infomation(self,contents,target,code):
+    foodIngredient = ''
+    food_feature = ''
+    foodSize = ''
+    foodType=''
+    food ={
+      'id':code,
+      '成分':'',
+      '特徴':'',
+      'サイズ':'',
+      'タイプ':''
+      }
+
+    for content in contents:
+      infomatonTables = content.find(class_=target)
+      for features in infomatonTables.find_all('tr'):
+        
+        if "成分" in str(features.find('th')):
+          if features.find('p') is None:
+            foodIngredient = 'not'
+          else:
+            food['成分'] = features.find('p').string
+        
+        if "特長" in str(features.find('th')):
+          if features.find_all(class_='item') is None:
+            food_feature = 'not'
+          else:
+            food['特徴'] = features.find_all(class_='item')
+            
+        if "サイズ" in str(features.find('th')):
+          if features.find('p') is None:
+            foodSize = 'not'
+          else:
+            food['サイズ'] = features.find('p').string
+
+        if "タイプ" in str(features.find('th')):
+          if features.find('p').string is None:
+            foodType = 'not'
+          else:
+            food['タイプ'] = features.find('p').string
+  
+    return food
+
+  
+
+  
+
+
+DOMAIN = 'https://www.shopping-charm.jp'
+headers = {"User-Agent": "your user agent"}
+shopScraping = ShopScraping(DOMAIN,headers)
+
+
+
+for i in range(2):
+  page = str(i)
+  URL = "https://www.shopping-charm.jp/category/2c2c2c2c-2c2c-3131-3139-303030303030?page=" + page
+  try:
+    response = requests.get(URL, timeout=5, headers=headers)
+
+
+    response.encoding = response.apparent_encoding 
+    # textでunicode, contentでstr
+
+    soup = BeautifulSoup(response.text, 'html.parser') #要素を抽出
+
+    itemContents = soup.find_all(class_='p-items__list')
+
+    ResultItemCodes = []
+    ResultItemNames = []
+    ResultItemPrices = []
+    ResultItemLinks =[]
+    ResultNameJson = {}
+    ResultPriceJson = {}
+    ResultLinkJson = {}
+
+
+    for itemContent in itemContents:
+      itemCodes = itemContent.find_all(class_='c-item__code')
+      itemNames = itemContent.find_all(class_= 'c-item__name')
+      itemPrices = itemContent.find_all(class_='c-price c-item__price')
+      itemLinks = itemContent.find_all('a')
+      
+
+      ResultItemLinks.append(shopScraping.item_link(DOMAIN,itemLinks))
+      
+    
+      for itemCode in itemCodes:
+        s = itemCode.string
+        strItemCode = s.replace('\n','')
+        ResultItemCodes.append(strItemCode)
+      
+      for itemName in itemNames:
+        s1 = itemName.string
+        s2 = s1.replace('\n','')
+        s3 = s2.replace('                                        ','')
+        strItemName = s3.replace('                                    ','')
+        ResultItemNames.append(strItemName)
+
+      for itemPrice in itemPrices:
+        itemPrice.find('span').extract()
+        s1 = itemPrice.text
+        s2 = s1.replace('\n                                        ','')
+        strItemPrice = s2.replace('\n','')
+        ResultItemPrices.append(strItemPrice)
+
+      ResultLinkJson.update(zip(ResultItemCodes,ResultItemLinks))
+      
+    time.sleep(1)
+    ResultNameJson.update(zip(ResultItemCodes,ResultItemNames))
+    ResultPriceJson.update(zip(ResultItemCodes,ResultItemPrices))
+  except requests.exceptions.HTTPError:
+    print('アクセスエラー')
+    print(URL)
+  except Exception as e:
+    print(e)
+
+
+#test = {'167959': 'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-313637393539', '173773': 'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-313733373733'}
+shopScraping.item_details(ResultLinkJson)
+
+
+ 
