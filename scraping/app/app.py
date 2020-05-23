@@ -1,6 +1,7 @@
 import requests
 import time
 import csv
+import json
 from bs4 import BeautifulSoup
 
 class ShopScraping:
@@ -15,28 +16,25 @@ class ShopScraping:
   
   def item_details(self,itemDetailLinks):
     time.sleep(1)
-    itemName = []
     itemCode = []
-    itemPrice = []
     itemBrand = []
-    itemInfomation =[]
-    itemFeature =[]
+    item_infomation_dict ={}
     
     for code ,itemDetailLink in itemDetailLinks.items():
       itemCode.append(code)
+      item_infomation_dict = {code:{}}
       response = requests.get(itemDetailLink, timeout=5, headers=headers)
       response.encoding = response.apparent_encoding 
       soup = BeautifulSoup(response.text, 'html.parser')
-
-      itemContents = soup.find_all(class_='p-itemscope')
-      #商品名を取得
       
-      #itemName.append(self.item(itemContents,'p-desc__ttl'))
+      itemContents = soup.find_all(class_='p-itemscope')
       itemBrand.append(self.item(itemContents,'p-brand__name'))
-      itemInfomation.append(self.item_infomation(itemContents,'p-desc__toggle__main',code))
-     # itemFeature.append(self.item_feature(itemContents,'p-desc__caption'))
-      #特徴は別メソッドで取得
-    print(itemInfomation)
+
+      #商品詳細情報取得
+      
+      item_infomation_dict[code]=self.item_infomation(itemContents,'p-desc__toggle__main',code)
+      break
+    return item_infomation_dict
 
 
 
@@ -50,14 +48,10 @@ class ShopScraping:
     return itemName.string
   
   def item_infomation(self,contents,target,code):
-    foodIngredient = ''
-    food_feature = ''
-    foodSize = ''
-    foodType=''
     food ={
       'id':code,
       '成分':'',
-      '特徴':'',
+      '特徴':{},
       'サイズ':'',
       'タイプ':''
       }
@@ -68,35 +62,33 @@ class ShopScraping:
         
         if "成分" in str(features.find('th')):
           if features.find('p') is None:
-            foodIngredient = 'not'
+            food['成分'] = 'not'
           else:
             food['成分'] = features.find('p').string
         
         if "特長" in str(features.find('th')):
           if features.find_all(class_='item') is None:
-            food_feature = 'not'
+            food = 'not'
           else:
-            food['特徴'] = features.find_all(class_='item')
-            
+            count = 0
+            for feature in features.find_all(class_='item'):
+              food['特徴'][count] = feature.string
+              count +=1            
         if "サイズ" in str(features.find('th')):
           if features.find('p') is None:
-            foodSize = 'not'
+            food['サイズ'] = 'not'
           else:
             food['サイズ'] = features.find('p').string
 
         if "タイプ" in str(features.find('th')):
           if features.find('p').string is None:
-            foodType = 'not'
+            food['タイプ'] = 'not'
           else:
             food['タイプ'] = features.find('p').string
   
     return food
 
   
-
-  
-
-
 DOMAIN = 'https://www.shopping-charm.jp'
 headers = {"User-Agent": "your user agent"}
 shopScraping = ShopScraping(DOMAIN,headers)
@@ -155,6 +147,7 @@ for i in range(2):
         strItemPrice = s2.replace('\n','')
         ResultItemPrices.append(strItemPrice)
 
+      #商品詳細ページのリンク
       ResultLinkJson.update(zip(ResultItemCodes,ResultItemLinks))
       
     time.sleep(1)
@@ -167,8 +160,28 @@ for i in range(2):
     print(e)
 
 
-#test = {'167959': 'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-313637393539', '173773': 'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-313733373733'}
-shopScraping.item_details(ResultLinkJson)
+item_imfomation = shopScraping.item_details(ResultLinkJson)
+print(item_imfomation)
+#f = open('../test.json','w')
+#print(ResultNameJson)
+#json.dump(f,ResultNameJson)
+#json.dump(f,ResultPriceJson)
+#json.dump(f,item_imfomation)
+
+#f.close()
+with open('infomation.json', 'w') as infomation_write:
+  json.dump(item_imfomation,infomation_write,indent=4,ensure_ascii=False)
+
+with open('name.json','w') as name_write:
+  json.dump(ResultNameJson,name_write,indent=4,ensure_ascii=False)
+
+with open('price.json','w') as price_write:
+  json.dump(ResultPriceJson,price_write,indent=4,ensure_ascii=False)
+
+
+
+
+
 
 
  

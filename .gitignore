@@ -4,3 +4,6 @@
 !/docker/php/psysh/config.php
 /logs/*
 /.env
+scraping/infomation.json
+scraping/name.json
+scraping/price.json
