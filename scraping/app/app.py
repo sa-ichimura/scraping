@@ -19,6 +19,7 @@ class ShopScraping:
     itemCode = []
     itemBrand = []
     item_infomation_dict ={}
+    infomation = {}
     
     for code ,itemDetailLink in itemDetailLinks.items():
       itemCode.append(code)
@@ -28,17 +29,19 @@ class ShopScraping:
       soup = BeautifulSoup(response.text, 'html.parser')
       
       itemContents = soup.find_all(class_='p-itemscope')
+
+      #商品の会社か取れているはず
+      #しばらくは使わない
       itemBrand.append(self.item(itemContents,'p-brand__name'))
 
       #商品詳細情報取得
       
       item_infomation_dict[code]=self.item_infomation(itemContents,'p-desc__toggle__main',code)
-      break
-    return item_infomation_dict
+      infomation.update(item_infomation_dict)
+    
+    print(infomation)
+    return infomation
 
-
-
-  
   
   def item(self,contents,target):
     for content in contents:
@@ -91,11 +94,12 @@ class ShopScraping:
   
 DOMAIN = 'https://www.shopping-charm.jp'
 headers = {"User-Agent": "your user agent"}
+
 shopScraping = ShopScraping(DOMAIN,headers)
 
 
 
-for i in range(2):
+for i in range(10):
   page = str(i)
   URL = "https://www.shopping-charm.jp/category/2c2c2c2c-2c2c-3131-3139-303030303030?page=" + page
   try:
@@ -151,7 +155,10 @@ for i in range(2):
       ResultLinkJson.update(zip(ResultItemCodes,ResultItemLinks))
       
     time.sleep(1)
+    #商品名を格納したdict
     ResultNameJson.update(zip(ResultItemCodes,ResultItemNames))
+
+    #商品金額を格納したdict
     ResultPriceJson.update(zip(ResultItemCodes,ResultItemPrices))
   except requests.exceptions.HTTPError:
     print('アクセスエラー')
@@ -159,16 +166,11 @@ for i in range(2):
   except Exception as e:
     print(e)
 
-
+#商品詳細情報を格納したdict
+#jsonに書き出してwebアプリケーション側に渡す
 item_imfomation = shopScraping.item_details(ResultLinkJson)
-print(item_imfomation)
-#f = open('../test.json','w')
-#print(ResultNameJson)
-#json.dump(f,ResultNameJson)
-#json.dump(f,ResultPriceJson)
-#json.dump(f,item_imfomation)
 
-#f.close()
+#webアプリケーションに渡すjsonを作成
 with open('infomation.json', 'w') as infomation_write:
   json.dump(item_imfomation,infomation_write,indent=4,ensure_ascii=False)
 
