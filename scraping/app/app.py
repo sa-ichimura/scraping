@@ -2,6 +2,7 @@ import requests
 import time
 import csv
 import json
+import re
 from bs4 import BeautifulSoup
 
 class ShopScraping:
@@ -52,6 +53,7 @@ class ShopScraping:
   def item_infomation(self,contents,target,code):
     food ={
       'id':code,
+      '対象':'',
       '成分':'',
       '特徴':{},
       'サイズ':'',
@@ -61,18 +63,31 @@ class ShopScraping:
     for content in contents:
       infomatonTables = content.find(class_=target)
       for features in infomatonTables.find_all('tr'):
-        
+        print(features.find('th'))
+        if "対象" in str(features.find('th')):
+          if features.find('p') is None:
+            food['対象'] = ''
+          else:
+            target = features.find('p').string
+            target_dict=re.split('・|などの',target)
+            food['対象'] = dict(zip(range(len(target_dict)), target_dict))
+
         if "成分" in str(features.find('th')):
           if features.find('p') is None:
-            food['成分'] = 'not'
-          elif '標準分析値' in features.find('p').string:
-            food['成分'] = features.find('p').string
+            food['成分'] = ''
           else:
             food['成分'] = features.find('p').string
         
+        if '標準分析値' in str(features.find('th')):
+          if features.find('p') is None:
+            food['成分'] = ''
+          else:
+            food['成分'] = features.find('p').string
+
+        
         if "特長" in str(features.find('th')):
           if features.find_all(class_='item') is None:
-            food = 'not'
+            food = ''
           else:
             count = 0
             for feature in features.find_all(class_='item'):
@@ -80,16 +95,16 @@ class ShopScraping:
               count +=1            
         if "サイズ" in str(features.find('th')):
           if features.find('p') is None:
-            food['サイズ'] = 'not'
+            food['サイズ'] = ''
           else:
             food['サイズ'] = features.find('p').string
 
         if "タイプ" in str(features.find('th')):
           if features.find('p').string is None:
-            food['タイプ'] = 'not'
+            food['タイプ'] = ''
           else:
             food['タイプ'] = features.find('p').string
-  
+    print(food)
     return food
 
   
@@ -100,7 +115,7 @@ shopScraping = ShopScraping(DOMAIN,headers)
 
 
 
-for i in range(10):
+for i in range(1):
   page = str(i)
   URL = "https://www.shopping-charm.jp/category/2c2c2c2c-2c2c-3131-3139-303030303030?page=" + page
   try:
@@ -145,9 +160,7 @@ for i in range(10):
         elif '訳あり' in strItemName:
           break
         else:
-          print(strItemName)
-
-        ResultItemNames.append(strItemName)      
+          ResultItemNames.append(strItemName)    
     
       for itemCode in itemCodes:
         s = itemCode.string
@@ -178,6 +191,8 @@ for i in range(10):
 
 #商品詳細情報を格納したdict
 #jsonに書き出してwebアプリケーション側に渡す
+ResultLinkJson = {}
+ResultLinkJson = {'214332':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-323134333332'}
 item_imfomation = shopScraping.item_details(ResultLinkJson)
 
 #webアプリケーションに渡すjsonを作成
