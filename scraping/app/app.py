@@ -39,7 +39,6 @@ class ShopScraping:
       item_infomation_dict[code]=self.item_infomation(itemContents,'p-desc__toggle__main',code)
       infomation.update(item_infomation_dict)
     
-    print(infomation)
     return infomation
 
   
@@ -66,6 +65,8 @@ class ShopScraping:
         if "成分" in str(features.find('th')):
           if features.find('p') is None:
             food['成分'] = 'not'
+          elif '標準分析値' in features.find('p').string:
+            food['成分'] = features.find('p').string
           else:
             food['成分'] = features.find('p').string
         
@@ -130,20 +131,29 @@ for i in range(10):
       
 
       ResultItemLinks.append(shopScraping.item_link(DOMAIN,itemLinks))
-      
+
+      for itemName in itemNames:
+        s1 = itemName.string
+        s2 = s1.replace('\n','')
+        s3 = s2.replace('                                        ','')
+        strItemName = s3.replace('                                    ','')
+        #特定のワードが含まれる商品は除外
+        if '+' in strItemName:
+          break
+        elif 'アウトレット' in strItemName:
+          break
+        elif '訳あり' in strItemName:
+          break
+        else:
+          print(strItemName)
+
+        ResultItemNames.append(strItemName)      
     
       for itemCode in itemCodes:
         s = itemCode.string
         strItemCode = s.replace('\n','')
         ResultItemCodes.append(strItemCode)
       
-      for itemName in itemNames:
-        s1 = itemName.string
-        s2 = s1.replace('\n','')
-        s3 = s2.replace('                                        ','')
-        strItemName = s3.replace('                                    ','')
-        ResultItemNames.append(strItemName)
-
       for itemPrice in itemPrices:
         itemPrice.find('span').extract()
         s1 = itemPrice.text
