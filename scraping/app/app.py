@@ -54,16 +54,21 @@ class ShopScraping:
     food ={
       'id':code,
       '対象':'',
-      '成分':'',
+      '成分':{},
       '特徴':{},
+      '量':'',
+      '材料':'',
       'サイズ':'',
       'タイプ':''
       }
+    ingredients_name=[]
+    ingredients_ini=[]
 
     for content in contents:
       infomatonTables = content.find(class_=target)
+      if infomatonTables is None:
+        break    
       for features in infomatonTables.find_all('tr'):
-        print(features.find('th'))
         if "対象" in str(features.find('th')):
           if features.find('p') is None:
             food['対象'] = ''
@@ -72,19 +77,20 @@ class ShopScraping:
             target_dict=re.split('・|などの',target)
             food['対象'] = dict(zip(range(len(target_dict)), target_dict))
 
-        if "成分" in str(features.find('th')):
+        if "成分" in str(features.find('th')) or '標準分析値' in str(features.find('th')):
           if features.find('p') is None:
             food['成分'] = ''
           else:
-            food['成分'] = features.find('p').string
-        
-        if '標準分析値' in str(features.find('th')):
-          if features.find('p') is None:
-            food['成分'] = ''
-          else:
-            food['成分'] = features.find('p').string
+            ingredients_list=re.split('、|:',features.find('p').string)
+            ingredients_dict=dict(zip(range(len(ingredients_list)), ingredients_list))
+            for k, v in ingredients_dict.items():
+              if k == 0 or k%2 ==0:
+                ingredients_name.append(v)
+              else:
+                ingredients_ini.append(v)
+            ingredients=dict(zip(ingredients_name,ingredients_ini))
+            food['成分'] =ingredients
 
-        
         if "特長" in str(features.find('th')):
           if features.find_all(class_='item') is None:
             food = ''
@@ -92,7 +98,19 @@ class ShopScraping:
             count = 0
             for feature in features.find_all(class_='item'):
               food['特徴'][count] = feature.string
-              count +=1            
+              count +=1
+        if "量" in str(features.find('th')):
+          if features.find('p') is None:
+            food['量'] = ''
+          else:
+            food['量'] = features.find('p').string
+
+        if "材料" in str(features.find('th')):
+          if features.find('p') is None:
+            food['材料'] = ''
+          else:
+            food['材料'] = features.find('p').string    
+
         if "サイズ" in str(features.find('th')):
           if features.find('p') is None:
             food['サイズ'] = ''
@@ -104,7 +122,6 @@ class ShopScraping:
             food['タイプ'] = ''
           else:
             food['タイプ'] = features.find('p').string
-    print(food)
     return food
 
   
@@ -115,7 +132,7 @@ shopScraping = ShopScraping(DOMAIN,headers)
 
 
 
-for i in range(1):
+for i in range(5):
   page = str(i)
   URL = "https://www.shopping-charm.jp/category/2c2c2c2c-2c2c-3131-3139-303030303030?page=" + page
   try:
@@ -153,26 +170,30 @@ for i in range(1):
         s3 = s2.replace('                                        ','')
         strItemName = s3.replace('                                    ','')
         #特定のワードが含まれる商品は除外
-        if '+' in strItemName:
+        strItemNameFlag = False
+        if '+' in strItemName: 
+          strItemNameFlag = True                    
           break
         elif 'アウトレット' in strItemName:
+          strItemNameFlag = True
           break
         elif '訳あり' in strItemName:
+          strItemNameFlag = True
           break
         else:
           ResultItemNames.append(strItemName)    
-    
-      for itemCode in itemCodes:
-        s = itemCode.string
-        strItemCode = s.replace('\n','')
-        ResultItemCodes.append(strItemCode)
-      
-      for itemPrice in itemPrices:
-        itemPrice.find('span').extract()
-        s1 = itemPrice.text
-        s2 = s1.replace('\n                                        ','')
-        strItemPrice = s2.replace('\n','')
-        ResultItemPrices.append(strItemPrice)
+      if strItemNameFlag is False:
+        for itemCode in itemCodes:
+          s = itemCode.string
+          strItemCode = s.replace('\n','')
+          ResultItemCodes.append(strItemCode)
+        
+        for itemPrice in itemPrices:
+          itemPrice.find('span').extract()
+          s1 = itemPrice.text
+          s2 = s1.replace('\n                                        ','')
+          strItemPrice = s2.replace('\n','')
+          ResultItemPrices.append(strItemPrice)
 
       #商品詳細ページのリンク
       ResultLinkJson.update(zip(ResultItemCodes,ResultItemLinks))
@@ -191,8 +212,12 @@ for i in range(1):
 
 #商品詳細情報を格納したdict
 #jsonに書き出してwebアプリケーション側に渡す
+
+'''
 ResultLinkJson = {}
-ResultLinkJson = {'214332':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-323134333332'}
+ResultLinkJson = {'214332':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-323134333332',
+'897317':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-383937333137'}
+'''
 item_imfomation = shopScraping.item_details(ResultLinkJson)
 
 #webアプリケーションに渡すjsonを作成
