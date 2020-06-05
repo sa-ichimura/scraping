@@ -171,7 +171,7 @@ for i in range(5):
         strItemName = s3.replace('                                    ','')
         #特定のワードが含まれる商品は除外
         strItemNameFlag = False
-        if '+' in strItemName: 
+        if '+' in strItemName or '×' in strItemName: 
           strItemNameFlag = True                    
           break
         elif 'アウトレット' in strItemName:
