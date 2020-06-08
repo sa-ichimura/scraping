@@ -21,6 +21,8 @@ class ShopScraping:
     itemBrand = []
     item_infomation_dict ={}
     infomation = {}
+    fishCategories = []
+    
     
     for code ,itemDetailLink in itemDetailLinks.items():
       itemCode.append(code)
@@ -37,10 +39,10 @@ class ShopScraping:
 
       #商品詳細情報取得
       
-      item_infomation_dict[code]=self.item_infomation(itemContents,'p-desc__toggle__main',code)
+      item_infomation_dict[code], fishCategory = self.item_infomation(itemContents, 'p-desc__toggle__main', code)
+      fishCategories.extend(fishCategory)
       infomation.update(item_infomation_dict)
-    
-    return infomation
+    return infomation,fishCategories
 
   
   def item(self,contents,target):
@@ -62,7 +64,8 @@ class ShopScraping:
       'タイプ':''
       }
     ingredients_name=[]
-    ingredients_ini=[]
+    ingredients_ini = []
+    fishCategory=[]
 
     for content in contents:
       infomatonTables = content.find(class_=target)
@@ -70,12 +73,12 @@ class ShopScraping:
         break    
       for features in infomatonTables.find_all('tr'):
         if "対象" in str(features.find('th')):
-          if features.find('p') is None:
+          if features.find('p') is None or "他" in features.find('p').string or "水槽" in features.find('p').string:
             food['対象'] = ''
           else:
             target = features.find('p').string
-            target_dict=re.split('・|などの',target)
-            food['対象'] = dict(zip(range(len(target_dict)), target_dict))
+            fishCategory = re.split('・|などの|、', target)
+            food['対象'] = dict(zip(range(len(fishCategory)), fishCategory))
 
         if "成分" in str(features.find('th')) or '標準分析値' in str(features.find('th')):
           if features.find('p') is None:
@@ -122,7 +125,7 @@ class ShopScraping:
             food['タイプ'] = ''
           else:
             food['タイプ'] = features.find('p').string
-    return food
+    return food,fishCategory
 
   
 DOMAIN = 'https://www.shopping-charm.jp'
@@ -218,7 +221,7 @@ ResultLinkJson = {}
 ResultLinkJson = {'214332':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-323134333332',
 '897317':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-383937333137'}
 '''
-item_imfomation = shopScraping.item_details(ResultLinkJson)
+item_imfomation,fishCategories = shopScraping.item_details(ResultLinkJson)
 
 #webアプリケーションに渡すjsonを作成
 with open('infomation.json', 'w') as infomation_write:
@@ -228,7 +231,14 @@ with open('name.json','w') as name_write:
   json.dump(ResultNameJson,name_write,indent=4,ensure_ascii=False)
 
 with open('price.json','w') as price_write:
-  json.dump(ResultPriceJson,price_write,indent=4,ensure_ascii=False)
+  json.dump(ResultPriceJson, price_write, indent=4, ensure_ascii=False)
+
+key = range(len(fishCategories))
+fishCategoryDict = dict(zip(fishCategories,key))
+with open('fishCategory.json','w') as price_write:
+  json.dump(fishCategoryDict, price_write, indent=4, ensure_ascii=False)
+  
+
 
 
 
