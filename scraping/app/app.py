@@ -3,6 +3,8 @@ import time
 import csv
 import json
 import re
+import os
+import shutil
 from bs4 import BeautifulSoup
 
 class ShopScraping:
@@ -24,7 +26,8 @@ class ShopScraping:
     fishCategories = []
     
     
-    for code ,itemDetailLink in itemDetailLinks.items():
+    for code, itemDetailLink in itemDetailLinks.items():
+      print(itemDetailLink)
       itemCode.append(code)
       item_infomation_dict = {code:{}}
       response = requests.get(itemDetailLink, timeout=5, headers=headers)
@@ -84,15 +87,16 @@ class ShopScraping:
           if features.find('p') is None:
             food['成分'] = ''
           else:
-            ingredients_list=re.split('、|:',features.find('p').string)
-            ingredients_dict=dict(zip(range(len(ingredients_list)), ingredients_list))
-            for k, v in ingredients_dict.items():
-              if k == 0 or k%2 ==0:
-                ingredients_name.append(v)
-              else:
-                ingredients_ini.append(v)
-            ingredients=dict(zip(ingredients_name,ingredients_ini))
-            food['成分'] =ingredients
+            if features.find('p').string is not None:
+              ingredients_list=re.split('、|:',features.find('p').string)
+              ingredients_dict=dict(zip(range(len(ingredients_list)), ingredients_list))
+              for k, v in ingredients_dict.items():
+                if k == 0 or k%2 ==0:
+                  ingredients_name.append(v)
+                else:
+                  ingredients_ini.append(v)
+              ingredients=dict(zip(ingredients_name,ingredients_ini))
+              food['成分'] =ingredients
 
         if "特長" in str(features.find('th')):
           if features.find_all(class_='item') is None:
@@ -133,9 +137,21 @@ headers = {"User-Agent": "your user agent"}
 
 shopScraping = ShopScraping(DOMAIN,headers)
 
+storage = 'app/storage'
+if os.path.exists(storage):
+  shutil.rmtree(storage)
+os.mkdir(storage)
+
+ResultNameJson = {}
+ResultPriceJson = {}
+ResultLinkJson = {}
+fishCategoryDict={}
+
+for i in range(2):
 
 
-for i in range(5):
+
+
   page = str(i)
   URL = "https://www.shopping-charm.jp/category/2c2c2c2c-2c2c-3131-3139-303030303030?page=" + page
   try:
@@ -153,9 +169,7 @@ for i in range(5):
     ResultItemNames = []
     ResultItemPrices = []
     ResultItemLinks =[]
-    ResultNameJson = {}
-    ResultPriceJson = {}
-    ResultLinkJson = {}
+
 
 
     for itemContent in itemContents:
@@ -216,26 +230,26 @@ for i in range(5):
 #商品詳細情報を格納したdict
 #jsonに書き出してwebアプリケーション側に渡す
 
-'''
-ResultLinkJson = {}
-ResultLinkJson = {'214332':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-323134333332',
-'897317':'https://www.shopping-charm.jp/product/2c2c2c2c-2c2c-2c2c-2c2c-383937333137'}
-'''
-item_imfomation,fishCategories = shopScraping.item_details(ResultLinkJson)
+  item_imfomation, fishCategories = shopScraping.item_details(ResultLinkJson)
+  item_imfomation.update(item_imfomation)
+  ResultNameJson.update(ResultNameJson)
+  ResultPriceJson.update(ResultPriceJson)
+  fishCategoryDict.update(fishCategoryDict)
 
-#webアプリケーションに渡すjsonを作成
-with open('infomation.json', 'w') as infomation_write:
+
+  #webアプリケーションに渡すjsonを作成
+with open(storage+'/infomation.json', 'a') as infomation_write:
   json.dump(item_imfomation,infomation_write,indent=4,ensure_ascii=False)
 
-with open('name.json','w') as name_write:
+with open(storage+'/name.json','a') as name_write:
   json.dump(ResultNameJson,name_write,indent=4,ensure_ascii=False)
 
-with open('price.json','w') as price_write:
+with open(storage+'/price.json','a') as price_write:
   json.dump(ResultPriceJson, price_write, indent=4, ensure_ascii=False)
 
 key = range(len(fishCategories))
 fishCategoryDict = dict(zip(fishCategories,key))
-with open('fishCategory.json','w') as price_write:
+with open(storage+'/fishCategory.json','a') as price_write:
   json.dump(fishCategoryDict, price_write, indent=4, ensure_ascii=False)
   
 
